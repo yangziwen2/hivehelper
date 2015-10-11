@@ -34,8 +34,6 @@ public class Parser {
 		
 		int endPos = findEndPos(sql, lastTable.end());
 		
-		System.out.println("endPos: " + endPos);
-		
 		if(nextKeyword != null && nextKeyword.is("where") && nextKeyword.end() < endPos) {
 			whereKeyword = nextKeyword;
 			nextKeyword = findKeyWord(sql, whereKeyword.end() + 1);
@@ -48,6 +46,8 @@ public class Parser {
 		if(nextKeyword != null && nextKeyword.is("union all") && nextKeyword.end() < endPos) {
 			endPos = nextKeyword.start() - 1;
 		}
+		
+		System.out.println("endPos: " + endPos);
 		
 		List<String> selectList = parseClauseList(sql, selectKeyword.end() + 1, fromKeyword.start());
 		List<String> whereList = Collections.emptyList();
@@ -139,6 +139,7 @@ public class Parser {
 			if(table != null) {
 				tables.add(table);
 			}
+			nextKeyword = findKeyWord(sql, table.end());
 		}
 		return tables;
 	}
@@ -160,7 +161,7 @@ public class Parser {
 		if(c == '(') {
 			table = parseQueryTable(sql, i + 1);
 		} else {
-			table = parseSimpleTable(sql, i + 1);
+			table = parseSimpleTable(sql, i);
 		}
 		int curPos = table.end();
 		// 处理union all的情形
@@ -169,7 +170,8 @@ public class Parser {
 			Keyword unionKeyword = nextKeyword;
 			int endPos = findEndPos(sql, table.end() + 1);
 			if(endPos > unionKeyword.end()) {
-				Table nextTable = parseTable(sql, unionKeyword.end());
+				Query query = parseQuery(sql, unionKeyword.end());
+				Table nextTable = new QueryTable(query);
 				table = new UnionTable()
 					.addUnionTable(table)
 					.addUnionTable(nextTable);
@@ -214,6 +216,9 @@ public class Parser {
 		String[] arr = str.split("\\s");
 		String tableName = arr[0];
 		String alias = arr.length >= 2? arr[1]: "";
+		if (arr.length >= 3 && "as".equalsIgnoreCase(alias)) {
+			alias = arr[2];
+		}
 		return new SimpleTable(tableName, alias, end);
 	}
 	

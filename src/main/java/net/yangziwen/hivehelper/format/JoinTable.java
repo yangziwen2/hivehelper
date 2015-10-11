@@ -19,12 +19,12 @@ public class JoinTable implements Table {
 
 	@Override
 	public String alias() {
-		return null;
+		return baseTable.alias();
 	}
 
 	@Override
 	public int end() {
-		return 0;
+		return baseTable.end();
 	}
 	
 	public JoinTable joinType(Keyword joinType) {

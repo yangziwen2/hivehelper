@@ -7,6 +7,8 @@ import com.google.common.collect.Lists;
 public class UnionTable implements Table {
 	
 	private List<Table> unionTables = Lists.newArrayList();
+	
+	private String alias;
 
 	@Override
 	public String table() {
@@ -15,7 +17,12 @@ public class UnionTable implements Table {
 
 	@Override
 	public String alias() {
-		return null;
+		return alias;
+	}
+	
+	public UnionTable alias(String alias) {
+		this.alias = alias;
+		return this;
 	}
 
 	@Override

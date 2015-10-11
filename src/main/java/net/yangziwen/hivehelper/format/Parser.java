@@ -165,19 +165,19 @@ public class Parser {
 		}
 		int curPos = table.end();
 		// 处理union all的情形
-		nextKeyword = findKeyWord(sql, table.end() + 1);
-		if(nextKeyword != null && nextKeyword.is("union all")) {
-			Keyword unionKeyword = nextKeyword;
-			int endPos = findEndPos(sql, table.end() + 1);
-			if(endPos > unionKeyword.end()) {
-				Query query = parseQuery(sql, unionKeyword.end());
-				Table nextTable = new QueryTable(query);
-				table = new UnionTable()
-					.addUnionTable(table)
-					.addUnionTable(nextTable);
-			}
-			curPos = table.end();
-		}
+//		nextKeyword = findKeyWord(sql, table.end() + 1);
+//		if(nextKeyword != null && nextKeyword.is("union all")) {
+//			Keyword unionKeyword = nextKeyword;
+//			int endPos = findEndPos(sql, table.end() + 1);
+//			if(endPos > unionKeyword.end()) {
+//				Query query = parseQuery(sql, unionKeyword.end());
+//				Table nextTable = new QueryTable(query);
+//				table = new UnionTable()
+//					.addUnionTable(table)
+//					.addUnionTable(nextTable);
+//			}
+//			curPos = table.end();
+//		}
 		// 处理join on的情形
 		if(joinKeyword != null) {
 			JoinTable joinTable = new JoinTable()
@@ -201,9 +201,26 @@ public class Parser {
 	public static Table parseQueryTable(String sql, int start) {
 		Query query = parseQuery(sql, start);
 		Keyword nextKeyword = findKeyWord(sql, query.end() + 1);
-		int endPos = findEndBracket(sql, query.end() + 1, nextKeyword.start());
+		if(!nextKeyword.is("union all")) {
+			int endPos = findEndBracket(sql, query.end() + 1, nextKeyword.start());
+			String alias = sql.substring(endPos + 1, nextKeyword.start()).trim();
+			return new QueryTable(query).alias(alias).end(nextKeyword.start() - 1);
+		}
+		// 处理union all的情形
+		Keyword unionKeyword = nextKeyword;
+		UnionTable unionTable = new UnionTable();
+		QueryTable table = new QueryTable(query).end(unionKeyword.start() - 1);
+		unionTable.addUnionTable(table);
+		while(nextKeyword.is("union all")) {
+			unionKeyword = nextKeyword;
+			query = parseQuery(sql, unionKeyword.end()+1);
+			table = new QueryTable(query).end(query.end());
+			unionTable.addUnionTable(table);
+			nextKeyword = findKeyWord(sql, table.end());
+		}
+		int endPos = findEndBracket(sql, unionTable.end() + 1, nextKeyword.start());
 		String alias = sql.substring(endPos + 1, nextKeyword.start()).trim();
-		return new QueryTable(query).alias(alias).end(nextKeyword.start() - 1);
+		return unionTable.alias(alias);
 	}
 	
 	public static SimpleTable parseSimpleTable(String sql, int start) {

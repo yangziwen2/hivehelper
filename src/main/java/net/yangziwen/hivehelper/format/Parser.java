@@ -17,15 +17,11 @@ import com.google.common.collect.Lists;
 
 public class Parser {
 	
-//	public static final Pattern KEY_WORDS = Pattern.compile("(?<=^|\\(|\\s+?)(select|from|join|inner\\s+?join|left\\s+?outer\\s+?join|on|where|group\\s+?by|having)(?=\\s+|\\)|$)", Pattern.CASE_INSENSITIVE);
-	
-	public static final Pattern KEY_WORDS = Pattern.compile("(?<=^|[^\\w\\d])(select|from|join|inner\\s+?join|left\\s+?outer\\s+?join|on|union|where|group\\s+?by|having)[^\\w\\d]", Pattern.CASE_INSENSITIVE);
-	
-//	public static final Pattern KEY_WORDS = Pattern.compile("(?<=^|(?:\\(|\\s+?)?\\s*?)(select|from|join|inner\\s+?join|left\\s+?outer\\s+?join|on|where|group\\s+?by|having)(?=\\s+|\\)|$)", Pattern.CASE_INSENSITIVE);
-
-//	public static final Pattern KEY_WORDS = Pattern.compile("(?<=^|(?:\\(|\\s+?)\\s*?)(select|from|join|inner\\s+?join|left\\s+?outer\\s+?join|on|where|group\\s+?by|having)(?=\\s+|\\)|$)", Pattern.CASE_INSENSITIVE);
+	public static final Pattern KEY_WORDS = Pattern.compile("(?<=^|[^\\w\\d])(select|from|join|inner\\s+?join|left\\s+?outer\\s+?join|on|union\\s+all|where|group\\s+?by|having)[^\\w\\d]", 
+			Pattern.CASE_INSENSITIVE);
 	
 	public static Query parseQuery(String sql, int start) {
+		System.out.println("start: " + start);
 		Keyword selectKeyword = findKeyWord(sql, start);
 		Keyword fromKeyword = findKeyWord(sql, selectKeyword.end() + 1);
 		
@@ -36,15 +32,21 @@ public class Parser {
 		Keyword whereKeyword = null;
 		Keyword groupByKeyword = null;
 		
-		if(nextKeyword != null && nextKeyword.is("where")) {
+		int endPos = findEndPos(sql, lastTable.end());
+		
+		System.out.println("endPos: " + endPos);
+		
+		if(nextKeyword != null && nextKeyword.is("where") && nextKeyword.end() < endPos) {
 			whereKeyword = nextKeyword;
 			nextKeyword = findKeyWord(sql, whereKeyword.end() + 1);
 		}
 		
-		int endPos = findEndPos(sql, whereKeyword != null? whereKeyword.end(): lastTable.end());
-		
 		if(nextKeyword != null && nextKeyword.is("group by") && nextKeyword.end() < endPos) {
 			groupByKeyword = nextKeyword;
+			nextKeyword = findKeyWord(sql, groupByKeyword.end() + 1);
+		}
+		if(nextKeyword != null && nextKeyword.is("union all") && nextKeyword.end() < endPos) {
+			endPos = nextKeyword.start() - 1;
 		}
 		
 		List<String> selectList = parseClauseList(sql, selectKeyword.end() + 1, fromKeyword.start());
@@ -52,7 +54,7 @@ public class Parser {
 		List<String> groupByList = Collections.emptyList();
 		
 		if(whereKeyword != null) {
-			whereList = splitByAnd(sql, whereKeyword.end() + 1, groupByKeyword != null? groupByKeyword.start() - 1: endPos - 1);
+			whereList = splitByAnd(sql, whereKeyword.end() + 1, groupByKeyword != null? groupByKeyword.start() - 1: endPos);
 		}
 		if(groupByKeyword != null) {
 			groupByList = splitByAnd(sql, groupByKeyword.end() + 1, endPos);
@@ -63,7 +65,7 @@ public class Parser {
 			.addTables(tableList)
 			.addWheres(whereList)
 			.addGroupBys(groupByList)
-			.endPos(endPos)
+			.end(endPos - 1)
 		;
 	}
 	
@@ -100,8 +102,20 @@ public class Parser {
 	}
 	
 	public static int findEndPos(String sql, int start) {
+		int pos = findEndBracket(sql, start);
+		if(pos < 0) {
+			pos = sql.length();
+		}
+		return pos;
+	}
+	
+	public static int findEndBracket(String sql, int start) {
+		return findEndBracket(sql, start, sql.length());
+	}
+	
+	public static int findEndBracket(String sql, int start, int end) {
 		int cnt = 0;
-		for(int i = start, len = sql.length(); i < len; i ++) {
+		for(int i = start; i < end; i ++) {
 			char c = sql.charAt(i);
 			if(c == '(') {
 				cnt ++;
@@ -112,7 +126,7 @@ public class Parser {
 				return i;
 			}
 		}
-		return sql.length();
+		return -1;
 	}
 	
 	public static List<Table> parseTables(String sql, int start) {
@@ -122,12 +136,20 @@ public class Parser {
 		Keyword nextKeyword = findKeyWord(sql, table.end() + 1);
 		while(nextKeyword != null && nextKeyword.contains("join")) {
 			table = parseTable(sql, table.end() + 1);
-			tables.add(table);
+			if(table != null) {
+				tables.add(table);
+			}
 		}
 		return tables;
 	}
 	
 	private static Table parseTable(String sql, int start) {
+		Keyword nextKeyword = findKeyWord(sql, start);
+		Keyword joinKeyword = null;
+		if(nextKeyword != null && nextKeyword.contains("join")) {
+			joinKeyword = nextKeyword;
+			start = joinKeyword.end() + 1;
+		}
 		int i = start;
 		char c = sql.charAt(i);
 		while (Character.isWhitespace(c)) {
@@ -140,15 +162,53 @@ public class Parser {
 		} else {
 			table = parseSimpleTable(sql, i + 1);
 		}
+		int curPos = table.end();
+		// 处理union all的情形
+		nextKeyword = findKeyWord(sql, table.end() + 1);
+		if(nextKeyword != null && nextKeyword.is("union all")) {
+			Keyword unionKeyword = nextKeyword;
+			int endPos = findEndPos(sql, table.end() + 1);
+			if(endPos > unionKeyword.end()) {
+				Table nextTable = parseTable(sql, unionKeyword.end());
+				table = new UnionTable()
+					.addUnionTable(table)
+					.addUnionTable(nextTable);
+			}
+			curPos = table.end();
+		}
+		// 处理join on的情形
+		if(joinKeyword != null) {
+			JoinTable joinTable = new JoinTable()
+				.baseTable(table)
+				.joinType(joinKeyword);	
+			nextKeyword = findKeyWord(sql, curPos);
+			if(nextKeyword != null && nextKeyword.is("on")) {
+				Keyword onKeyword = nextKeyword;
+				nextKeyword = findKeyWord(sql, onKeyword.end() + 1);
+				int endPos = findEndBracket(sql, start, nextKeyword.start());
+				if(endPos == -1) {
+					endPos = nextKeyword.start() - 1;
+				}
+				joinTable.addJoinOns(splitByAnd(sql, onKeyword.end(), endPos));
+			}
+			table = joinTable;
+		}
 		return table;
 	}
 	
 	public static Table parseQueryTable(String sql, int start) {
-		return null;
+		Query query = parseQuery(sql, start);
+		Keyword nextKeyword = findKeyWord(sql, query.end() + 1);
+		int endPos = findEndBracket(sql, query.end() + 1, nextKeyword.start());
+		String alias = sql.substring(endPos + 1, nextKeyword.start()).trim();
+		return new QueryTable(query).alias(alias).end(nextKeyword.start() - 1);
 	}
 	
 	public static SimpleTable parseSimpleTable(String sql, int start) {
 		Keyword nextKeyword = findKeyWord(sql, start);
+		if(nextKeyword == null) {
+			return null;
+		}
 		int end = nextKeyword != null? nextKeyword.start() - 1: sql.length();
 		String str = sql.substring(start, end).trim();
 		String[] arr = str.split("\\s");
@@ -158,8 +218,8 @@ public class Parser {
 	}
 	
 	public static void main(String[] args) throws Exception {
-//		File sqlFile = new File("d:/calculation_dm_city_performance_month_v2.sql");
-		File sqlFile = new File("d:/test.sql");
+		File sqlFile = new File("d:/calculation_dm_city_performance_month_v2.sql");
+//		File sqlFile = new File("d:/test.sql");
 		String sql = FileUtils.readFileToString(sqlFile);
 		Query query = parseQuery(sql, 0);
 		

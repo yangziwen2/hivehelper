@@ -16,11 +16,11 @@ public class Query {
 	
 	protected int endPos;
 	
-	public int endPos() {
+	public int end() {
 		return endPos;
 	}
 
-	public Query endPos(int endPos) {
+	public Query end(int endPos) {
 		this.endPos = endPos;
 		return this;
 	}

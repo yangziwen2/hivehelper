@@ -54,12 +54,27 @@ public class Keyword {
 		if(StringUtils.isBlank(keyword) || StringUtils.isBlank(name())) {
 			return false;
 		}
-		return keyword.equalsIgnoreCase(name());
+		String[] names = name().trim().split("\\s+");
+		String[] keywords = keyword.trim().split("\\s+");
+		if(names.length != keywords.length) {
+			return false;
+		}
+		for(int i = 0; i < names.length; i++) {
+			if(!keywords[i].equalsIgnoreCase(names[i])) {
+				return false;
+			}
+		}
+		return true;
 	}
 	
 	@Override
 	public String toString() {
 		return String.format("%s [%d, %d]", name(), start(), end());
+	}
+	
+	public static Keyword returnNull(String sql) {
+		int len = sql.length();
+		return new Keyword("null", len, len);
 	}
 	
 }

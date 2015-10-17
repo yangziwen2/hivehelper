@@ -11,10 +11,12 @@ public class JoinTable implements Table {
 	private Table baseTable;
 	
 	private List<String> joinOnList = Lists.newArrayList();
+	
+	private int end;
 
 	@Override
 	public String table() {
-		return null;
+		return null;	// TODO
 	}
 
 	@Override
@@ -24,7 +26,7 @@ public class JoinTable implements Table {
 
 	@Override
 	public int end() {
-		return baseTable.end();
+		return end;
 	}
 	
 	public JoinTable joinType(Keyword joinType) {
@@ -36,8 +38,9 @@ public class JoinTable implements Table {
 		return joinType;
 	}
 	
-	public JoinTable addJoinOns(List<String> joinOnList) {
+	public JoinTable addJoinOns(List<String> joinOnList, int endPos) {
 		this.joinOnList = joinOnList;
+		end = endPos;
 		return this;
 	}
 	

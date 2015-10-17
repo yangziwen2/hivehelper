@@ -34,16 +34,16 @@ public class Parser {
 		
 		int endPos = findEndPos(sql, lastTable.end());
 		
-		if(nextKeyword != null && nextKeyword.is("where") && nextKeyword.end() < endPos) {
+		if(nextKeyword.is("where") && nextKeyword.end() < endPos) {
 			whereKeyword = nextKeyword;
 			nextKeyword = findKeyWord(sql, whereKeyword.end() + 1);
 		}
 		
-		if(nextKeyword != null && nextKeyword.is("group by") && nextKeyword.end() < endPos) {
+		if(nextKeyword.is("group by") && nextKeyword.end() < endPos) {
 			groupByKeyword = nextKeyword;
 			nextKeyword = findKeyWord(sql, groupByKeyword.end() + 1);
 		}
-		if(nextKeyword != null && nextKeyword.is("union all") && nextKeyword.end() < endPos) {
+		if(nextKeyword.is("union all") && nextKeyword.end() < endPos) {
 			endPos = nextKeyword.start() - 1;
 		}
 		
@@ -93,7 +93,7 @@ public class Parser {
 	
 	public static List<String> splitByAnd(String sql, int start, int end) {
 		String substring = sql.substring(start, end);
-		String[] arr = substring.split("and|AND");
+		String[] arr = substring.split("[aA][nN][dD]");
 		List<String> list = Lists.newArrayList();
 		for(String str: arr) {
 			list.add(str.trim());
@@ -134,7 +134,7 @@ public class Parser {
 		Table table = parseTable(sql, start);
 		tables.add(table);
 		Keyword nextKeyword = findKeyWord(sql, table.end() + 1);
-		while(nextKeyword != null && nextKeyword.contains("join")) {
+		while(nextKeyword.contains("join")) {
 			table = parseTable(sql, table.end() + 1);
 			if(table != null) {
 				tables.add(table);
@@ -147,7 +147,7 @@ public class Parser {
 	private static Table parseTable(String sql, int start) {
 		Keyword nextKeyword = findKeyWord(sql, start);
 		Keyword joinKeyword = null;
-		if(nextKeyword != null && nextKeyword.contains("join")) {
+		if(nextKeyword.contains("join")) {
 			joinKeyword = nextKeyword;
 			start = joinKeyword.end() + 1;
 		}
@@ -184,14 +184,14 @@ public class Parser {
 				.baseTable(table)
 				.joinType(joinKeyword);	
 			nextKeyword = findKeyWord(sql, curPos);
-			if(nextKeyword != null && nextKeyword.is("on")) {
+			if(nextKeyword.is("on")) {
 				Keyword onKeyword = nextKeyword;
 				nextKeyword = findKeyWord(sql, onKeyword.end() + 1);
 				int endPos = findEndBracket(sql, start, nextKeyword.start());
 				if(endPos == -1) {
 					endPos = nextKeyword.start() - 1;
 				}
-				joinTable.addJoinOns(splitByAnd(sql, onKeyword.end(), endPos));
+				joinTable.addJoinOns(splitByAnd(sql, onKeyword.end(), endPos), endPos);
 			}
 			table = joinTable;
 		}
@@ -218,9 +218,9 @@ public class Parser {
 			unionTable.addUnionTable(table);
 			nextKeyword = findKeyWord(sql, table.end());
 		}
-		int endPos = findEndBracket(sql, unionTable.end() + 1, nextKeyword.start());
+		int endPos = findEndBracket(sql, unionTable.lastTable().end() + 1, nextKeyword.start());
 		String alias = sql.substring(endPos + 1, nextKeyword.start()).trim();
-		return unionTable.alias(alias);
+		return unionTable.alias(alias).end(nextKeyword.start() - 1);
 	}
 	
 	public static SimpleTable parseSimpleTable(String sql, int start) {
@@ -239,111 +239,12 @@ public class Parser {
 		return new SimpleTable(tableName, alias, end);
 	}
 	
-	public static void main(String[] args) throws Exception {
-		File sqlFile = new File("d:/calculation_dm_city_performance_month_v2.sql");
-//		File sqlFile = new File("d:/test.sql");
-		String sql = FileUtils.readFileToString(sqlFile);
-		Query query = parseQuery(sql, 0);
-		
-		for(String select: query.selectList()) {
-			System.out.println(select);
-		}
-		System.out.println(query.tableList());
-		for(String where: query.whereList()) {
-			System.out.println(where);
-		}
-	}
-	
-	public static void main1(String[] args) throws Exception {
-//		File sqlFile = new File("d:/calculation_dm_city_performance_month_v2.sql");
-		File sqlFile = new File("d:/calculation_dm_deal_data_day.sql");
-		String sql = FileUtils.readFileToString(sqlFile);
-//		sql = sql.replaceAll("\n", "");
-//		System.out.println(sql);
-//		System.out.println(sql.substring(170, 181));
-		Keyword keyword = null;
-		int start = 0;
-		int cnt = 0;
-		int depth = -1;
-		Keyword lastKeyword = new Keyword();
-		Stack<KeywordWrapper> joinStack = new Stack<KeywordWrapper>();
-		while((keyword = findKeyWord(sql, start)) != null) {
-			if(keyword.is("select") && !lastKeyword.contains("union")) {
-				depth ++;
-			} else if(keyword.contains("join")) {
-				if(!lastKeyword.is("from") && !lastKeyword.is("on")) {
-					 depth --;
-				}
-				joinStack.push(new KeywordWrapper(keyword, depth));
-			} else if(keyword.is("on")) {
-				depth = joinStack.pop().depth();
-			} else if(keyword.is("group by")) {
-				if(lastKeyword.is("group by")) {
-					depth --;
-				}
-			}
-			System.out.print(StringUtils.repeat("  ", depth));
-			System.out.println(keyword);
-			start = keyword.end();
-			lastKeyword = keyword;
-			cnt ++;
-		}
-		System.out.println(cnt);
-	}
-	
-	public static void main2(String[] args) throws Exception {
-		File sqlFile = new File("d:/calculation_dm_city_performance_month_v2.sql");
-		BufferedReader reader = new BufferedReader(new FileReader(sqlFile));
-		
-		String line = "";
-		while((line = reader.readLine()) != null) {
-			int commentIdx = -1;
-			while((commentIdx = line.lastIndexOf("--")) >= 0) {
-				line = line.substring(0, commentIdx);
-			}
-			System.out.println(line);
-//			Matcher matcher = KEY_WORDS.matcher(line);
-//			int start = 0;
-//			while(matcher.find(start)) {
-//				System.out.println(matcher.group() + " " + matcher.start());
-//				start = matcher.end();
-//			}
-			Keyword keyword = null;
-			int start = 0;
-			while((keyword = findKeyWord(line, start)) != null) {
-				System.out.println(keyword);
-				start = keyword.end();
-			}
-		}
-		
-		IOUtils.closeQuietly(reader);
-	}
-	
 	public static Keyword findKeyWord(String sql, int start) {
 		Matcher matcher = KEY_WORDS.matcher(sql);
 		if(matcher.find(start)) {
 			return new Keyword(matcher.group(1), matcher.start(1), matcher.end(1));
 		}
-		return null;
+		return Keyword.returnNull(sql);
 	}
 	
-	public static class KeywordWrapper {
-		
-		private Keyword keyword;
-		
-		private int depth;
-		
-		public KeywordWrapper(Keyword keyword, int depth) {
-			this.keyword = keyword; 
-			this.depth = depth;
-		}
-		
-		public Keyword keyword() {
-			return keyword;
-		}
-		
-		public int depth() {
-			return depth;
-		}
-	}
 }

@@ -3,6 +3,7 @@ package net.yangziwen.hivehelper;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.util.List;
 import java.util.Stack;
 
 import org.apache.commons.io.FileUtils;
@@ -18,16 +19,19 @@ public class Main {
 	public static void main(String[] args) throws Exception {
 		File sqlFile = new File("d:/test.sql");
 //		File sqlFile = new File("d:/test.sql");
-		String sql = FileUtils.readFileToString(sqlFile);
+//		String sql = FileUtils.readFileToString(sqlFile);
+		List<String> lists = FileUtils.readLines(sqlFile);
+		StringBuilder buff = new StringBuilder();
+		for(String line: lists) {
+			int commentIdx = line.indexOf("--");
+			if(commentIdx >= 0) {
+				line = line.substring(0, commentIdx);
+			}
+			buff.append(line).append("\n");
+		}
+		String sql = buff.toString();
+		System.out.println(sql);
 		Query query = Parser.parseQuery(sql, 0);
-		
-		for(String select: query.selectList()) {
-			System.out.println(select);
-		}
-		System.out.println(query.tableList());
-		for(String where: query.whereList()) {
-			System.out.println(where);
-		}
 	}
 	
 	public static void main1(String[] args) throws Exception {

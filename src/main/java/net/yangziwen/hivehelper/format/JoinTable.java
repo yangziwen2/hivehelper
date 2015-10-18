@@ -12,7 +12,9 @@ public class JoinTable implements Table {
 	
 	private List<String> joinOnList = Lists.newArrayList();
 	
-	private int end;
+	private int startPos;
+	
+	private int endPos;
 
 	@Override
 	public String table() {
@@ -24,9 +26,23 @@ public class JoinTable implements Table {
 		return baseTable.alias();
 	}
 
+	public int start() {
+		return startPos;
+	}
+	
+	public JoinTable start(int startPos) {
+		this.startPos = startPos;
+		return this;
+	}
+	
 	@Override
 	public int end() {
-		return end;
+		return endPos;
+	}
+	
+	public JoinTable end(int endPos) {
+		this.endPos = endPos;
+		return this;
 	}
 	
 	public JoinTable joinType(Keyword joinType) {
@@ -38,9 +54,8 @@ public class JoinTable implements Table {
 		return joinType;
 	}
 	
-	public JoinTable addJoinOns(List<String> joinOnList, int endPos) {
+	public JoinTable addJoinOns(List<String> joinOnList) {
 		this.joinOnList = joinOnList;
-		end = endPos;
 		return this;
 	}
 	

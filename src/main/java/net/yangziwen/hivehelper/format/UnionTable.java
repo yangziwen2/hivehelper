@@ -10,7 +10,9 @@ public class UnionTable implements Table {
 	
 	private String alias;
 	
-	private int end;
+	private int startPos;
+	
+	private int endPos;
 
 	@Override
 	public String table() {
@@ -27,16 +29,23 @@ public class UnionTable implements Table {
 		return this;
 	}
 	
+	public UnionTable start(int startPos) {
+		this.startPos = startPos;
+		return this;
+	}
+	
+	public int start() {
+		return startPos;
+	}
+	
 	public UnionTable end(int endPos) {
-		this.end = endPos;
+		this.endPos = endPos;
 		return this;
 	}
 
 	@Override
 	public int end() {
-//		Table lastTable = unionTables.get(unionTables.size() - 1);
-//		return lastTable.end();
-		return end;
+		return endPos;
 	}
 	
 	public List<Table> unionTableList() {

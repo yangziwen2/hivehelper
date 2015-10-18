@@ -1,24 +1,15 @@
 package net.yangziwen.hivehelper.format;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.util.Collections;
 import java.util.List;
-import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.collect.Lists;
 
 public class Parser {
 	
-	public static final Pattern KEY_WORDS = Pattern.compile("(?<=^|[^\\w\\d])(select|from|join|inner\\s+?join|left\\s+?outer\\s+?join|on|union\\s+all|where|group\\s+?by|having)[^\\w\\d]", 
-			Pattern.CASE_INSENSITIVE);
+	public static final Pattern KEY_WORD_PATTERN = Pattern.compile("(?<=^|[^\\w\\d])(select|from|join|inner\\s+?join|left\\s+?outer\\s+?join|on|union\\s+all|where|group\\s+?by|having)[^\\w\\d]", Pattern.CASE_INSENSITIVE);
 	
 	public static Query parseQuery(String sql, int start) {
 		System.out.println("start: " + start);
@@ -65,6 +56,7 @@ public class Parser {
 			.addTables(tableList)
 			.addWheres(whereList)
 			.addGroupBys(groupByList)
+			.start(selectKeyword.start())
 			.end(endPos - 1)
 		;
 	}
@@ -164,20 +156,7 @@ public class Parser {
 			table = parseSimpleTable(sql, i);
 		}
 		int curPos = table.end();
-		// 处理union all的情形
-//		nextKeyword = findKeyWord(sql, table.end() + 1);
-//		if(nextKeyword != null && nextKeyword.is("union all")) {
-//			Keyword unionKeyword = nextKeyword;
-//			int endPos = findEndPos(sql, table.end() + 1);
-//			if(endPos > unionKeyword.end()) {
-//				Query query = parseQuery(sql, unionKeyword.end());
-//				Table nextTable = new QueryTable(query);
-//				table = new UnionTable()
-//					.addUnionTable(table)
-//					.addUnionTable(nextTable);
-//			}
-//			curPos = table.end();
-//		}
+		
 		// 处理join on的情形
 		if(joinKeyword != null) {
 			JoinTable joinTable = new JoinTable()
@@ -191,7 +170,8 @@ public class Parser {
 				if(endPos == -1) {
 					endPos = nextKeyword.start() - 1;
 				}
-				joinTable.addJoinOns(splitByAnd(sql, onKeyword.end(), endPos), endPos);
+				joinTable.addJoinOns(splitByAnd(sql, onKeyword.end(), endPos))
+					.start(joinKeyword.start()).end(endPos);
 			}
 			table = joinTable;
 		}
@@ -204,28 +184,30 @@ public class Parser {
 		if(!nextKeyword.is("union all")) {
 			int endPos = findEndBracket(sql, query.end() + 1, nextKeyword.start());
 			String alias = sql.substring(endPos + 1, nextKeyword.start()).trim();
-			return new QueryTable(query).alias(alias).end(nextKeyword.start() - 1);
+			return new QueryTable(query).alias(alias)
+					.start(start).end(nextKeyword.start() - 1);
 		}
 		// 处理union all的情形
 		Keyword unionKeyword = nextKeyword;
 		UnionTable unionTable = new UnionTable();
-		QueryTable table = new QueryTable(query).end(unionKeyword.start() - 1);
+		QueryTable table = new QueryTable(query)
+				.start(start).end(unionKeyword.start() - 1);
 		unionTable.addUnionTable(table);
 		while(nextKeyword.is("union all")) {
 			unionKeyword = nextKeyword;
-			query = parseQuery(sql, unionKeyword.end()+1);
-			table = new QueryTable(query).end(query.end());
+			query = parseQuery(sql, unionKeyword.end() + 1);
+			table = new QueryTable(query).start(unionKeyword.end() + 1).end(query.end());
 			unionTable.addUnionTable(table);
 			nextKeyword = findKeyWord(sql, table.end());
 		}
 		int endPos = findEndBracket(sql, unionTable.lastTable().end() + 1, nextKeyword.start());
 		String alias = sql.substring(endPos + 1, nextKeyword.start()).trim();
-		return unionTable.alias(alias).end(nextKeyword.start() - 1);
+		return unionTable.alias(alias).start(start).end(nextKeyword.start() - 1);
 	}
 	
 	public static SimpleTable parseSimpleTable(String sql, int start) {
 		Keyword nextKeyword = findKeyWord(sql, start);
-		if(nextKeyword == null) {
+		if(nextKeyword.is("null")) {
 			return null;
 		}
 		int end = nextKeyword != null? nextKeyword.start() - 1: sql.length();
@@ -236,11 +218,11 @@ public class Parser {
 		if (arr.length >= 3 && "as".equalsIgnoreCase(alias)) {
 			alias = arr[2];
 		}
-		return new SimpleTable(tableName, alias, end);
+		return new SimpleTable(tableName, alias, start, end);
 	}
 	
 	public static Keyword findKeyWord(String sql, int start) {
-		Matcher matcher = KEY_WORDS.matcher(sql);
+		Matcher matcher = KEY_WORD_PATTERN.matcher(sql);
 		if(matcher.find(start)) {
 			return new Keyword(matcher.group(1), matcher.start(1), matcher.end(1));
 		}

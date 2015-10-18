@@ -8,11 +8,14 @@ public class SimpleTable implements Table {
 	
 	private String alias;
 	
+	private int startPos = 0;
+	
 	private int endPos = 0;
 	
-	public SimpleTable(String table, String alias, int endPos) {
+	public SimpleTable(String table, String alias, int startPos, int endPos) {
 		this.table = table;
 		this.alias = alias;
+		this.startPos = startPos;
 		this.endPos = endPos;
 	}
 
@@ -34,6 +37,10 @@ public class SimpleTable implements Table {
 	public SimpleTable alias(String alias) {
 		this.alias = alias;
 		return this;
+	}
+	
+	public int start() {
+		return startPos;
 	}
 	
 	public int end() {

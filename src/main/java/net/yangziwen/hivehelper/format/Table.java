@@ -6,6 +6,8 @@ public interface Table {
 	
 	public String alias();
 	
+	public int start();
+	
 	public int end();
 	
 }

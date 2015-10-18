@@ -14,7 +14,18 @@ public class Query {
 
 	protected List<String> groupByList = Lists.newArrayList();
 	
+	protected int startPos;
+	
 	protected int endPos;
+	
+	public int start() {
+		return startPos;
+	}
+	
+	public Query start(int startPos) {
+		this.startPos = startPos;
+		return this;
+	}
 	
 	public int end() {
 		return endPos;

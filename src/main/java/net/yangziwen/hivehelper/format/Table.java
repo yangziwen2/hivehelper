@@ -1,5 +1,7 @@
 package net.yangziwen.hivehelper.format;
 
+import java.io.StringWriter;
+
 public interface Table {
 	
 	public String table();
@@ -10,6 +12,6 @@ public interface Table {
 	
 	public int end();
 	
-	public StringBuilder format(String indent, String baseIndent, StringBuilder buff);
+	public StringWriter format(String indent, String baseIndent, StringWriter writer);
 	
 }

@@ -1,5 +1,6 @@
 package net.yangziwen.hivehelper.format;
 
+import java.io.StringWriter;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
@@ -81,59 +82,59 @@ public class Query {
 	}
 	
 	public String toString(String indent) {
-		return format(indent, new StringBuilder()).toString();
+		return format(indent, new StringWriter()).toString();
 	}
 	
-	public StringBuilder format(String indent, StringBuilder buff) {
-		return format(indent, "", buff);
+	public StringWriter format(String indent, StringWriter writer) {
+		return format(indent, "", writer);
 	}
 	
-	public StringBuilder format(String indent, String baseIndent, StringBuilder buff) {
-		this.formatSelect(indent, baseIndent, buff)
-			.formatFrom(indent, baseIndent, buff)
-			.formatWhere(indent, baseIndent, buff)
-			.formatGroupBy(indent, baseIndent, buff)
+	public StringWriter format(String indent, String baseIndent, StringWriter writer) {
+		this.formatSelect(indent, baseIndent, writer)
+			.formatFrom(indent, baseIndent, writer)
+			.formatWhere(indent, baseIndent, writer)
+			.formatGroupBy(indent, baseIndent, writer)
 		;
-		return buff;
+		return writer;
 	}
 	
-	private Query formatSelect(String indent, String baseIndent, StringBuilder buff) {
-		buff.append("SELECT ").append(selectList.get(0));
+	private Query formatSelect(String indent, String baseIndent, StringWriter writer) {
+		writer.append("SELECT ").append(selectList.get(0));
 		for(int i = 1; i < selectList.size(); i++) {
-			buff.append(",").append("\n").append(baseIndent).append(indent)
+			writer.append(",").append("\n").append(baseIndent).append(indent)
 				.append(selectList.get(i));
 		}
 		return this;
 	}
 	
-	private Query formatFrom(String indent, String baseIndent, StringBuilder buff) {
-		buff.append("\n").append(baseIndent).append("FROM ");
-		tableList.get(0).format(indent, baseIndent + indent, buff);
+	private Query formatFrom(String indent, String baseIndent, StringWriter writer) {
+		writer.append("\n").append(baseIndent).append("FROM ");
+		tableList.get(0).format(indent, baseIndent + indent, writer);
 		for(int i = 1; i < tableList.size(); i++) {
-			buff.append("\n").append(baseIndent).append(indent);
-			tableList.get(i).format(indent, baseIndent + indent, buff);
+			//writer.append("\n").append(baseIndent).append(indent);
+			tableList.get(i).format(indent, baseIndent + indent, writer);
 		}
 		return this;
 	}
 	
-	private Query formatWhere(String indent, String baseIndent, StringBuilder buff) {
+	private Query formatWhere(String indent, String baseIndent, StringWriter writer) {
 		if(CollectionUtils.isEmpty(whereList)) {
 			return this;
 		}
-		buff.append("\n").append(baseIndent)
+		writer.append("\n").append(baseIndent)
 			.append("WHERE ").append(whereList.get(0));
 		for(int i = 1; i < whereList.size(); i++) {
-			buff.append("\n").append(baseIndent).append(indent)
+			writer.append("\n").append(baseIndent).append(indent)
 				.append("AND ").append(whereList.get(i));
 		}
 		return this;
 	}
 	
-	private Query formatGroupBy(String indent, String baseIndent, StringBuilder buff) {
+	private Query formatGroupBy(String indent, String baseIndent, StringWriter writer) {
 		if(CollectionUtils.isEmpty(groupByList)) {
 			return this;
 		}
-		buff.append("\n").append(baseIndent)
+		writer.append("\n").append(baseIndent)
 			.append("GROUP BY ")
 			.append(StringUtils.join(groupByList.toArray(), ", "))
 		;

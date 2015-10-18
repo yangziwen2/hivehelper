@@ -1,5 +1,6 @@
 package net.yangziwen.hivehelper.format;
 
+import java.io.StringWriter;
 import java.util.List;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -76,19 +77,19 @@ public class JoinTable implements Table {
 	}
 
 	@Override
-	public StringBuilder format(String indent, String baseIndent, StringBuilder buff) {
+	public StringWriter format(String indent, String baseIndent, StringWriter writer) {
 		baseIndent = StringUtils.replaceOnce(baseIndent, indent, "");
-		buff.append("\n").append(baseIndent)
+		writer.append("\n").append(baseIndent)
 			.append(joinType.name()).append(" ");
-		baseTable.format(indent, baseIndent + indent, buff);
+		baseTable.format(indent, baseIndent + indent, writer);
 		if(CollectionUtils.isNotEmpty(joinOnList)) {
-			buff.append("\n").append(baseIndent)
+			writer.append("\n").append(baseIndent)
 				.append("ON").append(" ").append(joinOnList.get(0));
 			for(int i = 1; i < joinOnList.size(); i++) {
-				buff.append(" AND ").append(joinOnList.get(i));
+				writer.append(" AND ").append(joinOnList.get(i));
 			}
 		}
-		return buff;
+		return writer;
 	}
 
 }

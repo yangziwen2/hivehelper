@@ -1,5 +1,7 @@
 package net.yangziwen.hivehelper.format;
 
+import java.io.StringWriter;
+
 import org.apache.commons.lang3.StringUtils;
 
 public class SimpleTable implements Table {
@@ -58,12 +60,12 @@ public class SimpleTable implements Table {
 	}
 
 	@Override
-	public StringBuilder format(String indent, String baseIndent, StringBuilder buff) {
-		buff.append(table());
+	public StringWriter format(String indent, String baseIndent, StringWriter writer) {
+		writer.append(table());
 		if(StringUtils.isNotBlank(alias())) {
-			buff.append(" ").append(alias());
+			writer.append(" ").append(alias());
 		}
-		return buff;
+		return writer;
 	}
 
 }

@@ -23,7 +23,7 @@ public class Main {
 		}
 		String sql = buff.toString();
 		Query query = Parser.parseQuery(sql, 0);
-		System.out.println(query);
+		System.out.println(query.toString());
 	}
 	
 }

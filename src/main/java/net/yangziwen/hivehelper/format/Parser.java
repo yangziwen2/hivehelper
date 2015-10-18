@@ -1,15 +1,45 @@
 package net.yangziwen.hivehelper.format;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.StringUtils;
+
+import com.google.common.base.Function;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 
 public class Parser {
 	
-	public static final Pattern KEY_WORD_PATTERN = Pattern.compile("(?<=^|[^\\w\\d])(select|from|join|inner\\s+?join|left\\s+?outer\\s+?join|on|union\\s+all|where|group\\s+?by|having)[^\\w\\d]", Pattern.CASE_INSENSITIVE);
+	public static final String[] KEYWORDS = {
+		"select",
+		"from",
+		"join",
+		"inner join",
+		"left outer join",
+		"full outer join",
+		"semi join",
+		"on",
+		"union all",
+		"where",
+		"group by"
+	};
+	
+	public static final Pattern KEYWORD_PATTERN = buildKeywordPatten(KEYWORDS);
+	
+	private static Pattern buildKeywordPatten(String[] keywords) {
+		Collection<String> keywordRegexList = Collections2.transform(Arrays.asList(keywords), new Function<String, String>() {
+			@Override
+			public String apply(String keyword) {
+				return keyword.replace(" ", "\\s+?");
+			}
+		});
+		return Pattern.compile("(?<=^|[^\\w\\d])(" + StringUtils.join(keywordRegexList, "|") + ")[^\\w\\d]", Pattern.CASE_INSENSITIVE);
+	}
 	
 	public static Query parseQuery(String sql, int start) {
 		Keyword selectKeyword = findKeyWord(sql, start);
@@ -136,22 +166,19 @@ public class Parser {
 		tables.add(table);
 		Keyword nextKeyword = findKeyWord(sql, table.end() + 1);
 		while(nextKeyword.contains("join")) {
-			table = parseTable(sql, table.end() + 1);
+			table = parseJoinTable(sql, table.end() + 1);
 			if(table != null) {
 				tables.add(table);
 			}
 			nextKeyword = findKeyWord(sql, table.end());
+			if(findEndBracket(sql, table.end(), nextKeyword.start()) > 0) {
+				break;	// 子查询在当前on后面结束了
+			}
 		}
 		return tables;
 	}
 	
 	private static Table parseTable(String sql, int start) {
-		Keyword nextKeyword = findKeyWord(sql, start);
-		Keyword joinKeyword = null;
-		if(nextKeyword.contains("join")) {
-			joinKeyword = nextKeyword;
-			start = joinKeyword.end() + 1;
-		}
 		int i = start;
 		char c = sql.charAt(i);
 		while (Character.isWhitespace(c)) {
@@ -164,6 +191,17 @@ public class Parser {
 		} else {
 			table = parseSimpleTable(sql, i);
 		}
+		return table;
+	}
+	
+	private static Table parseJoinTable(String sql, int start) {
+		Keyword nextKeyword = findKeyWord(sql, start);
+		Keyword joinKeyword = null;
+		if(nextKeyword.contains("join")) {
+			joinKeyword = nextKeyword;
+			start = joinKeyword.end() + 1;
+		}
+		Table table = parseTable(sql, start);
 		int curPos = table.end();
 		
 		// 处理join on的情形
@@ -231,7 +269,7 @@ public class Parser {
 	}
 	
 	public static Keyword findKeyWord(String sql, int start) {
-		Matcher matcher = KEY_WORD_PATTERN.matcher(sql);
+		Matcher matcher = KEYWORD_PATTERN.matcher(sql);
 		if(matcher.find(start)) {
 			return new Keyword(matcher.group(1), matcher.start(1), matcher.end(1));
 		}

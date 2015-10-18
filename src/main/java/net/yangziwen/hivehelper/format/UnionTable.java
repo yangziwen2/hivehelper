@@ -1,5 +1,6 @@
 package net.yangziwen.hivehelper.format;
 
+import java.io.StringWriter;
 import java.util.Collection;
 import java.util.List;
 
@@ -78,25 +79,24 @@ public class UnionTable implements Table {
 	}
 
 	@Override
-	public StringBuilder format(String indent, String baseIndent, StringBuilder buff) {
-		StringBuilder b = new StringBuilder();
-		unionTables.get(0).format(indent, baseIndent, b);
-		int idx = b.lastIndexOf(")") - 1;
+	public StringWriter format(String indent, String baseIndent, StringWriter buff) {
+		StringWriter sw = new StringWriter();
+		unionTables.get(0).format(indent, baseIndent, sw);
+		int idx = sw.getBuffer().lastIndexOf(")") - 1;
 		if(idx < 0) {
-			idx = b.length();
+			idx = sw.getBuffer().length();
 		}
-		buff.append(b.substring(0, idx));
+		buff.append(sw.getBuffer().substring(0, idx));
 		
 		for(int i = 1; i < unionTables.size(); i++) {
 			buff.append("\n").append(baseIndent).append("UNION ALL")
 				.append("\n").append(baseIndent);
-			b = new StringBuilder();
-			unionTables.get(i).format(indent, baseIndent, b);
-			idx = b.indexOf("(") + 1;
-			buff.append(b.substring(idx));
+			sw = new StringWriter();
+			unionTables.get(i).format(indent, baseIndent, sw);
+			idx = sw.getBuffer().indexOf("(") + 1;
+			buff.append(sw.getBuffer().substring(idx));
 		}
-		buff.append("\n");
-		return buff;
+		return buff.append(" ").append(alias()).append("\n");
 	}
 
 }

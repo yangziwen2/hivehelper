@@ -1,5 +1,7 @@
 package net.yangziwen.hivehelper.format;
 
+import java.io.StringWriter;
+
 import org.apache.commons.lang3.StringUtils;
 
 public class QueryTable implements Table {
@@ -56,14 +58,14 @@ public class QueryTable implements Table {
 	}
 
 	@Override
-	public StringBuilder format(String indent, String baseIndent, StringBuilder buff) {
-		buff.append("(").append("\n").append(baseIndent);
-		query.format(indent, baseIndent, buff);
-		buff.append("\n").append(StringUtils.replaceOnce(baseIndent, indent, "")).append(")");
+	public StringWriter format(String indent, String baseIndent, StringWriter writer) {
+		writer.append("(").append("\n").append(baseIndent);
+		query.format(indent, baseIndent, writer);
+		writer.append("\n").append(StringUtils.replaceOnce(baseIndent, indent, "")).append(")");
 		if(StringUtils.isNotBlank(alias())) {
-			buff.append(" ").append(alias());
+			writer.append(" ").append(alias());
 		}
-		return buff;
+		return writer;
 	}
 
 }

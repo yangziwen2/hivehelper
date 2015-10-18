@@ -21,7 +21,7 @@ public class QueryTable implements Table {
 
 	@Override
 	public String table() {
-		return null;
+		return "QueryTable[" + query + "]";
 	}
 
 	@Override

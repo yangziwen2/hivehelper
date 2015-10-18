@@ -65,16 +65,24 @@ public class Parser {
 		String substring = sql.substring(start, end);
 		List<String> list = Lists.newArrayList();
 		int pos = 0;
-		int cnt = 0;
+		int bracketCnt = 0;
+		boolean quoteFlag = false;
+		boolean doubleQuoteFlag = false;
 		for(int i = 0, len = substring.length(); i < len; i++) {
 			char c = substring.charAt(i);
 			if(c == '(') {
-				cnt ++;
+				bracketCnt ++;
 			} 
 			else if (c == ')') {
-				cnt --;
+				bracketCnt --;
 			} 
-			else if (c == ',' && cnt == 0) {
+			else if (c == '\'') {
+				quoteFlag = !quoteFlag;
+			}
+			else if (c == '"') {
+				doubleQuoteFlag = !doubleQuoteFlag;
+			}
+			else if (c == ',' && bracketCnt == 0 && !quoteFlag && !doubleQuoteFlag) {
 				list.add(substring.substring(pos, i).trim());
 				pos = i + 1;
 			}

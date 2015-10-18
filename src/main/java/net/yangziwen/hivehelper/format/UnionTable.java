@@ -1,7 +1,12 @@
 package net.yangziwen.hivehelper.format;
 
+import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
+
+import com.google.common.base.Function;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 
 public class UnionTable implements Table {
@@ -16,7 +21,12 @@ public class UnionTable implements Table {
 
 	@Override
 	public String table() {
-		return null;
+		Collection<String> tableNames = Collections2.transform(unionTables, new Function<Table, String>() {
+			@Override public String apply(Table table) {
+				return table.table();
+			}
+		});
+		return "UnionTable[" + StringUtils.join(tableNames.toArray()) + "]";
 	}
 
 	@Override

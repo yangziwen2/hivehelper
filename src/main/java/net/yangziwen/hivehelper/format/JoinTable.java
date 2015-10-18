@@ -18,7 +18,7 @@ public class JoinTable implements Table {
 
 	@Override
 	public String table() {
-		return null;	// TODO
+		return "JoinTable[" + baseTable.table() + "]";
 	}
 
 	@Override

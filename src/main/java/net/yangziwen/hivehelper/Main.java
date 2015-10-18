@@ -13,13 +13,13 @@ import org.apache.commons.lang3.StringUtils;
 import net.yangziwen.hivehelper.format.Keyword;
 import net.yangziwen.hivehelper.format.Parser;
 import net.yangziwen.hivehelper.format.Query;
+import net.yangziwen.hivehelper.format.QueryTable;
+import net.yangziwen.hivehelper.format.Table;
 
 public class Main {
 
 	public static void main(String[] args) throws Exception {
 		File sqlFile = new File("d:/test.sql");
-//		File sqlFile = new File("d:/test.sql");
-//		String sql = FileUtils.readFileToString(sqlFile);
 		List<String> lists = FileUtils.readLines(sqlFile);
 		StringBuilder buff = new StringBuilder();
 		for(String line: lists) {
@@ -32,6 +32,23 @@ public class Main {
 		String sql = buff.toString();
 		System.out.println(sql);
 		Query query = Parser.parseQuery(sql, 0);
+		Table table = query.tableList().get(0);
+		System.out.println(table.getClass());
+		System.out.println(query.tableList().size());
+		System.out.println(table.start() + " " + table.end());
+		
+		QueryTable qt = (QueryTable) table;
+		
+		System.out.println(qt.query().start() + " " + qt.query().end());
+		
+		Query q2 = qt.query();
+		
+		System.out.println(q2.tableList().size());
+		System.out.println("--------------------------");
+		for(Table tbl: q2.tableList()) {
+			System.out.println(tbl.alias() + " " + tbl.start() + " " + tbl.end());
+			System.out.println(tbl.table());
+		}
 	}
 	
 	public static void main1(String[] args) throws Exception {

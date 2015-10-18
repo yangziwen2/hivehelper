@@ -77,11 +77,11 @@ public class JoinTable implements Table {
 	}
 
 	@Override
-	public StringWriter format(String indent, String baseIndent, StringWriter writer) {
-		baseIndent = StringUtils.replaceOnce(baseIndent, indent, "");
+	public StringWriter format(String indent, int nestedDepth, StringWriter writer) {
+		String baseIndent = StringUtils.repeat(indent, nestedDepth - 1);
 		writer.append("\n").append(baseIndent)
 			.append(joinType.name()).append(" ");
-		baseTable.format(indent, baseIndent + indent, writer);
+		baseTable.format(indent, nestedDepth, writer);
 		if(CollectionUtils.isNotEmpty(joinOnList)) {
 			writer.append("\n").append(baseIndent)
 				.append("ON").append(" ").append(joinOnList.get(0));

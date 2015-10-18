@@ -79,9 +79,10 @@ public class UnionTable implements Table {
 	}
 
 	@Override
-	public StringWriter format(String indent, String baseIndent, StringWriter buff) {
+	public StringWriter format(String indent, int nestedDepth, StringWriter buff) {
+		String baseIndent = StringUtils.repeat(indent, nestedDepth);
 		StringWriter sw = new StringWriter();
-		unionTables.get(0).format(indent, baseIndent, sw);
+		unionTables.get(0).format(indent, nestedDepth, sw);
 		int idx = sw.getBuffer().lastIndexOf(")") - 1;
 		if(idx < 0) {
 			idx = sw.getBuffer().length();
@@ -92,7 +93,7 @@ public class UnionTable implements Table {
 			buff.append("\n").append(baseIndent).append("UNION ALL")
 				.append("\n").append(baseIndent);
 			sw = new StringWriter();
-			unionTables.get(i).format(indent, baseIndent, sw);
+			unionTables.get(i).format(indent, nestedDepth, sw);
 			idx = sw.getBuffer().indexOf("(") + 1;
 			buff.append(sw.getBuffer().substring(idx));
 		}

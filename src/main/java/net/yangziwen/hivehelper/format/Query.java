@@ -86,59 +86,76 @@ public class Query {
 	}
 	
 	public StringWriter format(String indent, StringWriter writer) {
-		return format(indent, "", writer);
+		return format(indent, 0, writer);
 	}
 	
-	public StringWriter format(String indent, String baseIndent, StringWriter writer) {
-		this.formatSelect(indent, baseIndent, writer)
-			.formatFrom(indent, baseIndent, writer)
-			.formatWhere(indent, baseIndent, writer)
-			.formatGroupBy(indent, baseIndent, writer)
+	public StringWriter format(String indent, int nestedDepth, StringWriter writer) {
+		this.formatSelect(indent, nestedDepth, writer)
+			.formatFrom(indent, nestedDepth, writer)
+			.formatWhere(indent, nestedDepth, writer)
+			.formatGroupBy(indent, nestedDepth, writer)
 		;
 		return writer;
 	}
 	
-	private Query formatSelect(String indent, String baseIndent, StringWriter writer) {
+	private Query formatSelect(String indent, int nestedDepth, StringWriter writer) {
+		String sep = chooseSeprator(selectList, indent, nestedDepth + 1);
 		writer.append("SELECT ").append(selectList.get(0));
 		for(int i = 1; i < selectList.size(); i++) {
-			writer.append(",").append("\n").append(baseIndent).append(indent)
+			writer.append(",").append(sep)
 				.append(selectList.get(i));
 		}
 		return this;
 	}
 	
-	private Query formatFrom(String indent, String baseIndent, StringWriter writer) {
-		writer.append("\n").append(baseIndent).append("FROM ");
-		tableList.get(0).format(indent, baseIndent + indent, writer);
+	private Query formatFrom(String indent, int nestedDepth, StringWriter writer) {
+		writer.append("\n").append(StringUtils.repeat(indent, nestedDepth)).append("FROM ");
+		tableList.get(0).format(indent, nestedDepth + 1, writer);
 		for(int i = 1; i < tableList.size(); i++) {
 			//writer.append("\n").append(baseIndent).append(indent);
-			tableList.get(i).format(indent, baseIndent + indent, writer);
+			tableList.get(i).format(indent, nestedDepth + 1, writer);
 		}
 		return this;
 	}
 	
-	private Query formatWhere(String indent, String baseIndent, StringWriter writer) {
+	private Query formatWhere(String indent, int nestedDepth, StringWriter writer) {
 		if(CollectionUtils.isEmpty(whereList)) {
 			return this;
 		}
-		writer.append("\n").append(baseIndent)
+		String sep = chooseSeprator(whereList, indent, nestedDepth + 1);
+		writer.append("\n").append(StringUtils.repeat(indent, nestedDepth))
 			.append("WHERE ").append(whereList.get(0));
 		for(int i = 1; i < whereList.size(); i++) {
-			writer.append("\n").append(baseIndent).append(indent)
-				.append("AND ").append(whereList.get(i));
+			writer.append(sep).append("AND ").append(whereList.get(i));
 		}
 		return this;
 	}
 	
-	private Query formatGroupBy(String indent, String baseIndent, StringWriter writer) {
+	private Query formatGroupBy(String indent, int nestedDepth, StringWriter writer) {
 		if(CollectionUtils.isEmpty(groupByList)) {
 			return this;
 		}
-		writer.append("\n").append(baseIndent)
+		writer.append("\n").append(StringUtils.repeat(indent, nestedDepth))
 			.append("GROUP BY ")
 			.append(StringUtils.join(groupByList.toArray(), ", "))
 		;
 		return this;
+	}
+	
+	
+	private static String chooseSeprator(List<String> list, String indent, int nestedDepth) {
+		String sep = "\n" + StringUtils.repeat(indent, nestedDepth);
+		if(list.size() > 5) {
+			return sep;
+		}
+		int totalLen = 0;
+		for(String select: list) {
+			totalLen += select.length();
+		}
+		if(totalLen < 80) {
+			sep = " ";
+		}
+		return sep;
 	}
 	
 }

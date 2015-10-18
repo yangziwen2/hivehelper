@@ -58,10 +58,10 @@ public class QueryTable implements Table {
 	}
 
 	@Override
-	public StringWriter format(String indent, String baseIndent, StringWriter writer) {
-		writer.append("(").append("\n").append(baseIndent);
-		query.format(indent, baseIndent, writer);
-		writer.append("\n").append(StringUtils.replaceOnce(baseIndent, indent, "")).append(")");
+	public StringWriter format(String indent, int nestedDepth, StringWriter writer) {
+		writer.append("(").append("\n").append(StringUtils.repeat(indent, nestedDepth));
+		query.format(indent, nestedDepth, writer);
+		writer.append("\n").append(StringUtils.repeat(indent, nestedDepth - 1)).append(")");
 		if(StringUtils.isNotBlank(alias())) {
 			writer.append(" ").append(alias());
 		}

@@ -60,7 +60,7 @@ public class SimpleTable implements Table {
 	}
 
 	@Override
-	public StringWriter format(String indent, String baseIndent, StringWriter writer) {
+	public StringWriter format(String indent, int nestedDepth, StringWriter writer) {
 		writer.append(table());
 		if(StringUtils.isNotBlank(alias())) {
 			writer.append(" ").append(alias());

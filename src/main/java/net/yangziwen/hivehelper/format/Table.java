@@ -12,6 +12,6 @@ public interface Table {
 	
 	public int end();
 	
-	public StringWriter format(String indent, String baseIndent, StringWriter writer);
+	public StringWriter format(String indent, int nestedDepth, StringWriter writer);
 	
 }

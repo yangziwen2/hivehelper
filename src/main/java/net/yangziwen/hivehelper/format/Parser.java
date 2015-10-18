@@ -41,6 +41,9 @@ public class Parser {
 		return Pattern.compile("(?<=^|[^\\w\\d])(" + StringUtils.join(keywordRegexList, "|") + ")[^\\w\\d]", Pattern.CASE_INSENSITIVE);
 	}
 	
+	/**
+	 * 解析查询语句
+	 */
 	public static Query parseQuery(String sql, int start) {
 		Keyword selectKeyword = findKeyWord(sql, start);
 		Keyword fromKeyword = findKeyWord(sql, selectKeyword.end() + 1);
@@ -88,6 +91,9 @@ public class Parser {
 		;
 	}
 	
+	/**
+	 * 解析由“,”分隔的条件，如select或group by后的约束条件语句
+	 */
 	public static List<String> parseClauseList(String sql, int start, int end) {
 		String substring = sql.substring(start, end);
 		List<String> list = Lists.newArrayList();
@@ -160,6 +166,9 @@ public class Parser {
 		return -1;
 	}
 	
+	/**
+	 * 解析from后的一个或多个table，包括子查询产生的临时表
+	 */
 	public static List<Table> parseTables(String sql, int start) {
 		List<Table> tables = Lists.newArrayList();
 		Table table = parseTable(sql, start);
@@ -194,6 +203,9 @@ public class Parser {
 		return table;
 	}
 	
+	/**
+	 * 解析通过join语句连接的table
+	 */
 	private static Table parseJoinTable(String sql, int start) {
 		Keyword nextKeyword = findKeyWord(sql, start);
 		Keyword joinKeyword = null;
@@ -225,6 +237,9 @@ public class Parser {
 		return table;
 	}
 	
+	/**
+	 * 解析子查询产生的临时表
+	 */
 	public static Table parseQueryTable(String sql, int start) {
 		Query query = parseQuery(sql, start);
 		Keyword nextKeyword = findKeyWord(sql, query.end() + 1);
@@ -252,6 +267,9 @@ public class Parser {
 		return unionTable.alias(alias).start(start).end(nextKeyword.start() - 1);
 	}
 	
+	/**
+	 * 解析单张表的表名
+	 */
 	public static SimpleTable parseSimpleTable(String sql, int start) {
 		Keyword nextKeyword = findKeyWord(sql, start);
 		if(nextKeyword.is("null")) {

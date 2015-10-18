@@ -2,6 +2,9 @@ package net.yangziwen.hivehelper.format;
 
 import java.util.List;
 
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+
 import com.google.common.collect.Lists;
 
 public class JoinTable implements Table {
@@ -70,6 +73,22 @@ public class JoinTable implements Table {
 	public JoinTable baseTable(Table baseTable) {
 		this.baseTable = baseTable;
 		return this;
+	}
+
+	@Override
+	public StringBuilder format(String indent, String baseIndent, StringBuilder buff) {
+		baseIndent = StringUtils.replaceOnce(baseIndent, indent, "");
+		buff.append("\n").append(baseIndent)
+			.append(joinType.name()).append(" ");
+		baseTable.format(indent, baseIndent + indent, buff);
+		if(CollectionUtils.isNotEmpty(joinOnList)) {
+			buff.append("\n").append(baseIndent)
+				.append("ON").append(" ").append(joinOnList.get(0));
+			for(int i = 1; i < joinOnList.size(); i++) {
+				buff.append(" AND ").append(joinOnList.get(i));
+			}
+		}
+		return buff;
 	}
 
 }

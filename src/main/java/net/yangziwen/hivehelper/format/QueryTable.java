@@ -1,5 +1,7 @@
 package net.yangziwen.hivehelper.format;
 
+import org.apache.commons.lang3.StringUtils;
+
 public class QueryTable implements Table {
 	
 	private Query query;
@@ -51,6 +53,17 @@ public class QueryTable implements Table {
 	@Override
 	public int end() {
 		return endPos;
+	}
+
+	@Override
+	public StringBuilder format(String indent, String baseIndent, StringBuilder buff) {
+		buff.append("(").append("\n").append(baseIndent);
+		query.format(indent, baseIndent, buff);
+		buff.append("\n").append(StringUtils.replaceOnce(baseIndent, indent, "")).append(")");
+		if(StringUtils.isNotBlank(alias())) {
+			buff.append(" ").append(alias());
+		}
+		return buff;
 	}
 
 }

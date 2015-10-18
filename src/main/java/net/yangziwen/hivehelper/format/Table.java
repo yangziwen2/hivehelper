@@ -10,4 +10,6 @@ public interface Table {
 	
 	public int end();
 	
+	public StringBuilder format(String indent, String baseIndent, StringBuilder buff);
+	
 }

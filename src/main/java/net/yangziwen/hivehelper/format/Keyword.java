@@ -21,7 +21,8 @@ public class Keyword {
 	}
 	
 	public Keyword name(String name) {
-		this.name = name;
+		String[] arr = name.trim().toUpperCase().split("\\s+");
+		this.name = StringUtils.join(arr, ' ');
 		return this;
 	}
 	

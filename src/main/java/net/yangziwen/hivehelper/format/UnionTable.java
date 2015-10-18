@@ -77,4 +77,26 @@ public class UnionTable implements Table {
 		return this;
 	}
 
+	@Override
+	public StringBuilder format(String indent, String baseIndent, StringBuilder buff) {
+		StringBuilder b = new StringBuilder();
+		unionTables.get(0).format(indent, baseIndent, b);
+		int idx = b.lastIndexOf(")") - 1;
+		if(idx < 0) {
+			idx = b.length();
+		}
+		buff.append(b.substring(0, idx));
+		
+		for(int i = 1; i < unionTables.size(); i++) {
+			buff.append("\n").append(baseIndent).append("UNION ALL")
+				.append("\n").append(baseIndent);
+			b = new StringBuilder();
+			unionTables.get(i).format(indent, baseIndent, b);
+			idx = b.indexOf("(") + 1;
+			buff.append(b.substring(idx));
+		}
+		buff.append("\n");
+		return buff;
+	}
+
 }

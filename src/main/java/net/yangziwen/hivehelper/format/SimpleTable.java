@@ -57,4 +57,13 @@ public class SimpleTable implements Table {
 		return table + (StringUtils.isNotBlank(alias)? " " + alias: "");
 	}
 
+	@Override
+	public StringBuilder format(String indent, String baseIndent, StringBuilder buff) {
+		buff.append(table());
+		if(StringUtils.isNotBlank(alias())) {
+			buff.append(" ").append(alias());
+		}
+		return buff;
+	}
+
 }

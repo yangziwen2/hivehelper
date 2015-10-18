@@ -12,7 +12,6 @@ public class Parser {
 	public static final Pattern KEY_WORD_PATTERN = Pattern.compile("(?<=^|[^\\w\\d])(select|from|join|inner\\s+?join|left\\s+?outer\\s+?join|on|union\\s+all|where|group\\s+?by|having)[^\\w\\d]", Pattern.CASE_INSENSITIVE);
 	
 	public static Query parseQuery(String sql, int start) {
-		System.out.println("start: " + start);
 		Keyword selectKeyword = findKeyWord(sql, start);
 		Keyword fromKeyword = findKeyWord(sql, selectKeyword.end() + 1);
 		
@@ -38,8 +37,6 @@ public class Parser {
 			endPos = nextKeyword.start() - 1;
 		}
 		
-		System.out.println("endPos: " + endPos);
-		
 		List<String> selectList = parseClauseList(sql, selectKeyword.end() + 1, fromKeyword.start());
 		List<String> whereList = Collections.emptyList();
 		List<String> groupByList = Collections.emptyList();
@@ -48,7 +45,7 @@ public class Parser {
 			whereList = splitByAnd(sql, whereKeyword.end() + 1, groupByKeyword != null? groupByKeyword.start() - 1: endPos);
 		}
 		if(groupByKeyword != null) {
-			groupByList = splitByAnd(sql, groupByKeyword.end() + 1, endPos);
+			groupByList = parseClauseList(sql, groupByKeyword.end() + 1, endPos);
 		}
 		
 		return new Query()
@@ -91,14 +88,18 @@ public class Parser {
 		return list;
 	}
 	
-	public static List<String> splitByAnd(String sql, int start, int end) {
-		String substring = sql.substring(start, end);
-		String[] arr = substring.split("[aA][nN][dD]");
+	public static List<String> splitBy(String str, String regex, int start, int end) {
+		String substring = str.substring(start, end);
+		String[] arr = substring.split(regex);
 		List<String> list = Lists.newArrayList();
-		for(String str: arr) {
-			list.add(str.trim());
+		for(String s: arr) {
+			list.add(s.trim());
 		}
 		return list;
+	}
+	
+	public static List<String> splitByAnd(String str, int start, int end) {
+		return splitBy(str, "[aA][nN][dD]", start, end);
 	}
 	
 	public static int findEndPos(String sql, int start) {

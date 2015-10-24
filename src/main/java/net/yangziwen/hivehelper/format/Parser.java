@@ -46,12 +46,12 @@ public class Parser {
 	 */
 	public static Query parseQuery(String sql, int start) {
 		Keyword selectKeyword = findKeyWord(sql, start);
-		Keyword fromKeyword = findKeyWord(sql, selectKeyword.end() + 1);
+		Keyword fromKeyword = findKeyWord(sql, selectKeyword.end());
 		
-		List<Table> tableList = parseTables(sql, fromKeyword.end() + 1);
+		List<Table> tableList = parseTables(sql, fromKeyword.end());
 		Table lastTable = tableList.get(tableList.size() - 1);
 		
-		Keyword nextKeyword = findKeyWord(sql, lastTable.end() + 1);
+		Keyword nextKeyword = findKeyWord(sql, lastTable.end());
 		Keyword whereKeyword = null;
 		Keyword groupByKeyword = null;
 		
@@ -59,12 +59,12 @@ public class Parser {
 		
 		if(nextKeyword.is("where") && nextKeyword.end() < endPos) {
 			whereKeyword = nextKeyword;
-			nextKeyword = findKeyWord(sql, whereKeyword.end() + 1);
+			nextKeyword = findKeyWord(sql, whereKeyword.end());
 		}
 		
 		if(nextKeyword.is("group by") && nextKeyword.end() < endPos) {
 			groupByKeyword = nextKeyword;
-			nextKeyword = findKeyWord(sql, groupByKeyword.end() + 1);
+			nextKeyword = findKeyWord(sql, groupByKeyword.end());
 		}
 		if(nextKeyword.is("union all") && nextKeyword.end() < endPos) {
 			endPos = nextKeyword.start() - 1;
@@ -211,7 +211,7 @@ public class Parser {
 		Keyword joinKeyword = null;
 		if(nextKeyword.contains("join")) {
 			joinKeyword = nextKeyword;
-			start = joinKeyword.end() + 1;
+			start = joinKeyword.end();
 		}
 		Table table = parseTable(sql, start);
 		int curPos = table.end();
@@ -245,9 +245,13 @@ public class Parser {
 		Keyword nextKeyword = findKeyWord(sql, query.end() + 1);
 		if(!nextKeyword.is("union all")) {
 			int endPos = findEndBracket(sql, query.end() + 1, nextKeyword.start());
-			String alias = sql.substring(endPos + 1, nextKeyword.start()).trim();
+			int nextEndPos = findEndBracket(sql, endPos + 1, nextKeyword.start());
+			if(nextEndPos == -1 || nextEndPos > nextKeyword.start()) {
+				nextEndPos = nextKeyword.start();
+			}
+			String alias = sql.substring(endPos + 1, nextEndPos).trim().split("\\s+")[0];
 			return new QueryTable(query).alias(alias)
-					.start(start).end(nextKeyword.start() - 1);
+					.start(start).end(endPos + alias.length());
 		}
 		// 处理union all的情形
 		Keyword unionKeyword = nextKeyword;

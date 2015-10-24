@@ -11,7 +11,7 @@ import net.yangziwen.hivehelper.format.Query;
 public class Main {
 
 	public static void main(String[] args) throws Exception {
-		File sqlFile = new File("d:/test.sql");
+		File sqlFile = new File("D:/test.sql");
 		List<String> lists = FileUtils.readLines(sqlFile);
 		StringBuilder buff = new StringBuilder();
 		for(String line: lists) {

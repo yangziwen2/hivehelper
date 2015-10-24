@@ -22,6 +22,7 @@ public class Main {
 			buff.append(line).append("\n");
 		}
 		String sql = buff.toString();
+		sql = sql.replaceAll("/\\*[\\w\\W]*?\\*/", "");
 		Query query = Parser.parseQuery(sql, 0);
 		System.out.println(query.toString());
 	}

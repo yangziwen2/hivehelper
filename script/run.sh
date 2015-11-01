@@ -1,0 +1,1 @@
+java -Dport=8060 -DautoOpen=true -jar hqlformatter.jar

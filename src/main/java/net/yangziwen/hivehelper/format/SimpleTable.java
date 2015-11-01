@@ -4,15 +4,9 @@ import java.io.StringWriter;
 
 import org.apache.commons.lang3.StringUtils;
 
-public class SimpleTable implements Table {
+public class SimpleTable extends AbstractTable<SimpleTable> implements Table<SimpleTable> {
 	
 	private String table;
-	
-	private String alias;
-	
-	private int startPos = 0;
-	
-	private int endPos = 0;
 	
 	public SimpleTable(String table, String alias, int startPos, int endPos) {
 		this.table = table;
@@ -26,34 +20,6 @@ public class SimpleTable implements Table {
 		return table;
 	}
 	
-	public SimpleTable table(String table) {
-		this.table = table;
-		return this;
-	}
-
-	@Override
-	public String alias() {
-		return alias;
-	}
-	
-	public SimpleTable alias(String alias) {
-		this.alias = alias;
-		return this;
-	}
-	
-	public int start() {
-		return startPos;
-	}
-	
-	public int end() {
-		return endPos;
-	}
-	
-	public SimpleTable end(int endPos) {
-		this.endPos = endPos;
-		return this;
-	}
-	
 	@Override
 	public String toString() {
 		return table + (StringUtils.isNotBlank(alias)? " " + alias: "");
@@ -64,6 +30,9 @@ public class SimpleTable implements Table {
 		writer.append(table());
 		if(StringUtils.isNotBlank(alias())) {
 			writer.append(" ").append(alias());
+		}
+		if(headComment != null) {
+			writer.append("  ").append(headComment().content());
 		}
 		return writer;
 	}

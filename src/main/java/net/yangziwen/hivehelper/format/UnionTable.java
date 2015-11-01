@@ -1,80 +1,65 @@
 package net.yangziwen.hivehelper.format;
 
 import java.io.StringWriter;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Collections2;
-import com.google.common.collect.Lists;
-
-public class UnionTable implements Table {
+public class UnionTable extends AbstractTable<UnionTable> implements Table<UnionTable> {
 	
-	private List<Table> unionTables = Lists.newArrayList();	// 按道理，这些table都应该是QueryTable
+	private List<Keyword> unionKeywords = new ArrayList<Keyword>();
 	
-	private String alias;
-	
-	private int startPos;
-	
-	private int endPos;
+	private List<Table<?>> unionTables = new ArrayList<Table<?>>();	// 按道理，这些table都应该是QueryTable
 
 	@Override
 	public String table() {
-		Collection<String> tableNames = Collections2.transform(unionTables, new Function<Table, String>() {
-			@Override public String apply(Table table) {
-				return table.table();
-			}
-		});
-		return "UnionTable[" + StringUtils.join(tableNames.toArray()) + "]";
-	}
-
-	@Override
-	public String alias() {
-		return alias;
+		List<String> tableNames = new ArrayList<String>();
+		for(Table<?> table: unionTables) {
+			tableNames.add(table.table());
+		}
+		return "UnionTable[" + StringUtils.join(tableNames.toArray(), ",") + "]";
 	}
 	
-	public UnionTable alias(String alias) {
-		this.alias = alias;
+	public List<Keyword> unionKeywordList() {
+		return unionKeywords;
+	}
+	
+	public UnionTable addUnionKeyword(Keyword keyword) {
+		if(!keyword.contains("union")) {
+			throw new IllegalStateException(String.format("%s is not a union keyword!", keyword));
+		}
+		unionKeywords.add(keyword);
 		return this;
 	}
 	
-	public UnionTable start(int startPos) {
-		this.startPos = startPos;
-		return this;
-	}
-	
-	public int start() {
-		return startPos;
-	}
-	
-	public UnionTable end(int endPos) {
-		this.endPos = endPos;
-		return this;
-	}
-
-	@Override
-	public int end() {
-		return endPos;
-	}
-	
-	public List<Table> unionTableList() {
+	public List<Table<?>> unionTableList() {
 		return unionTables;
 	}
 	
-	public Table lastTable() {
+	public Table<?> lastTable() {
 		int size = unionTables.size();
 		return unionTables.get(size - 1);
 	}
 	
-	public UnionTable addUnionTable(Table table) {
+	public UnionTable addUnionTable(Table<?> table) {
 		if(table instanceof UnionTable) {
 			UnionTable another = (UnionTable) table;
 			unionTables.addAll(another.unionTables);
 		} else {
 			unionTables.add(table);
 		}
+		return this;
+	}
+	
+	@Override
+	public Comment headComment() {
+		return unionTables.get(0).headComment();
+	}
+	
+	@Override
+	public UnionTable headComment(Comment comment) {
+		unionTables.get(0).headComment(comment);
 		return this;
 	}
 
@@ -89,13 +74,26 @@ public class UnionTable implements Table {
 		}
 		buff.append(sw.getBuffer().substring(0, idx));
 		
-		for(int i = 1; i < unionTables.size(); i++) {
-			buff.append("\n").append(baseIndent).append("UNION ALL")
-				.append("\n").append(baseIndent);
+		int size = unionTables.size();
+		
+		for(int i = 1; i < size; i++) {
+			buff.append("\n");
+			buff.append(baseIndent).append("UNION ALL");
+			
+			Comment comment = unionKeywords.get(i - 1).comment();
+			if(comment != null) {
+				buff.append("  ").append(comment.content());
+			}
+			
+			buff.append("\n").append(baseIndent);
 			sw = new StringWriter();
 			unionTables.get(i).format(indent, nestedDepth, sw);
 			idx = sw.getBuffer().indexOf("(") + 1;
-			buff.append(sw.getBuffer().substring(idx));
+			int idx2 = sw.getBuffer().lastIndexOf(")");
+			if(idx2 == -1 || i == size - 1) {
+				idx2 = sw.getBuffer().length();
+			}
+			buff.append(sw.getBuffer().substring(idx, idx2));
 		}
 		return buff.append(" ").append(alias()).append("\n");
 	}

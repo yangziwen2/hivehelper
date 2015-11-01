@@ -1,54 +1,26 @@
 package net.yangziwen.hivehelper.format;
 
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import com.google.common.collect.Lists;
 
-public class JoinTable implements Table {
+public class JoinTable extends AbstractTable<JoinTable> implements Table<JoinTable> {
 	
 	private Keyword joinType;
 	
-	private Table baseTable;
+	private Table<?> baseTable;
 	
-	private List<String> joinOnList = Lists.newArrayList();
+	private List<String> joinOnList = new ArrayList<String>();
 	
-	private int startPos;
-	
-	private int endPos;
-
 	@Override
 	public String table() {
 		return "JoinTable[" + baseTable.table() + "]";
 	}
 
-	@Override
-	public String alias() {
-		return baseTable.alias();
-	}
-
-	public int start() {
-		return startPos;
-	}
-	
-	public JoinTable start(int startPos) {
-		this.startPos = startPos;
-		return this;
-	}
-	
-	@Override
-	public int end() {
-		return endPos;
-	}
-	
-	public JoinTable end(int endPos) {
-		this.endPos = endPos;
-		return this;
-	}
-	
 	public JoinTable joinType(Keyword joinType) {
 		this.joinType = joinType;
 		return this;
@@ -67,11 +39,11 @@ public class JoinTable implements Table {
 		return joinOnList;
 	}
 	
-	public Table baseTable() {
+	public Table<?> baseTable() {
 		return baseTable;
 	}
 	
-	public JoinTable baseTable(Table baseTable) {
+	public JoinTable baseTable(Table<?> baseTable) {
 		this.baseTable = baseTable;
 		return this;
 	}

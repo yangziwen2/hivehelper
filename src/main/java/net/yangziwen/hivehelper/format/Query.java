@@ -1,22 +1,26 @@
 package net.yangziwen.hivehelper.format;
 
 import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.util.CollectionUtils;
 
-import com.google.common.collect.Lists;
 
 public class Query {
 	
-	protected List<String> selectList = Lists.newArrayList();
+	private static final Pattern COMMENT_PREFIX_PATTERN = Pattern.compile("\\s*?--(?!\\d+\\})");
 	
-	protected List<Table> tableList = Lists.newArrayList();
+	protected List<String> selectList = new ArrayList<String>();
 	
-	protected List<String> whereList = Lists.newArrayList();
+	protected List<Table<?>> tableList = new ArrayList<Table<?>>();
+	
+	protected List<String> whereList = new ArrayList<String>();
 
-	protected List<String> groupByList = Lists.newArrayList();
+	protected List<String> groupByList = new ArrayList<String>();
 	
 	protected int startPos;
 	
@@ -44,7 +48,7 @@ public class Query {
 		return selectList;
 	}
 	
-	public List<Table> tableList() {
+	public List<Table<?>> tableList() {
 		return tableList;
 	}
 	
@@ -61,7 +65,7 @@ public class Query {
 		return this;
 	}
 	
-	public Query addTables(List<Table> tableList) {
+	public Query addTables(List<Table<?>> tableList) {
 		this.tableList.addAll(tableList);
 		return this;
 	}
@@ -102,8 +106,18 @@ public class Query {
 		String sep = chooseSeprator(selectList, indent, nestedDepth + 1);
 		writer.append("SELECT ").append(selectList.get(0));
 		for(int i = 1; i < selectList.size(); i++) {
-			writer.append(",").append(sep)
-				.append(selectList.get(i));
+			writer.append(",");
+			String clause = selectList.get(i).trim();
+			if(COMMENT_PREFIX_PATTERN.matcher(clause).find()) {		// 添加对注释的支持
+				String[] strs = clause.split("(\\r\\n)|\\r|\\n");
+				if(strs.length > 1) {
+					String comment = strs[0];
+					writer.append("  ").append(comment);
+					clause = StringUtils.join(Arrays.copyOfRange(strs, 1, strs.length), "\n").trim();
+				}
+			}
+			writer.append(sep)
+				.append(clause);
 		}
 		return this;
 	}
@@ -126,7 +140,14 @@ public class Query {
 		writer.append("\n").append(StringUtils.repeat(indent, nestedDepth))
 			.append("WHERE ").append(whereList.get(0));
 		for(int i = 1; i < whereList.size(); i++) {
-			writer.append(sep).append("AND ").append(whereList.get(i));
+			// 支持where语句中进行单行注释，如下
+			// -- AND t.manager_type = 'XXX'
+			if(!whereList.get(i-1).endsWith("--")) {
+				writer.append(sep);
+			} else {
+				writer.append(" ");
+			}
+			writer.append("AND ").append(whereList.get(i));
 		}
 		return this;
 	}
@@ -149,8 +170,11 @@ public class Query {
 			return sep;
 		}
 		int totalLen = 0;
-		for(String select: list) {
-			totalLen += select.length();
+		for(String condition: list) {
+			if(COMMENT_PREFIX_PATTERN.matcher(condition).find()) {
+				return sep;
+			}
+			totalLen += condition.length();
 		}
 		if(totalLen < 80) {
 			sep = " ";

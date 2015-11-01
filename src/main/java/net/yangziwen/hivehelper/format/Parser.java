@@ -1,7 +1,6 @@
 package net.yangziwen.hivehelper.format;
 
-import java.util.Arrays;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -9,9 +8,6 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Collections2;
-import com.google.common.collect.Lists;
 
 public class Parser {
 	
@@ -20,6 +16,7 @@ public class Parser {
 		"from",
 		"join",
 		"inner join",
+		"left join",
 		"left outer join",
 		"full outer join",
 		"semi join",
@@ -31,25 +28,36 @@ public class Parser {
 	
 	public static final Pattern KEYWORD_PATTERN = buildKeywordPatten(KEYWORDS);
 	
+	// 应对珠玑脚本中类似{DATE--1}表达式的例外，此情形中“--”不能视为注释
+	// 为什么第一个\\s{0,n}中的n大于3就会报错?
+	private static Pattern ARES_ESCAPE_PATTERN = Pattern.compile("(?<=\\{\\s{0,3}(HOUR|DATE|MONTH|YEAR)\\s*?)--\\s*?\\d+?\\s*?\\}", Pattern.CASE_INSENSITIVE);
+	
+	private Parser() {}
+	
 	private static Pattern buildKeywordPatten(String[] keywords) {
-		Collection<String> keywordRegexList = Collections2.transform(Arrays.asList(keywords), new Function<String, String>() {
-			@Override
-			public String apply(String keyword) {
-				return keyword.replace(" ", "\\s+?");
-			}
-		});
-		return Pattern.compile("(?<=^|[^\\w\\d])(" + StringUtils.join(keywordRegexList, "|") + ")[^\\w\\d]", Pattern.CASE_INSENSITIVE);
+		List<String> keywordRegexList = new ArrayList<String>();
+		for(String keyword: keywords) {
+			keywordRegexList.add(keyword.replace(" ", "\\s+?"));
+		}
+		return Pattern.compile("(?<=^|[^_\\-0-9a-zA-Z\u4e00-\u9fa5])(" + StringUtils.join(keywordRegexList, "|") + ")(?=[^_0-9a-zA-Z\u4e00-\u9fa5])", Pattern.CASE_INSENSITIVE);
+	}
+	
+	public static Query parseSelectSql(String sql) {
+		return parseQuery(sql, 0);
 	}
 	
 	/**
 	 * 解析查询语句
 	 */
-	public static Query parseQuery(String sql, int start) {
+	private static Query parseQuery(String sql, int start) {
 		Keyword selectKeyword = findKeyWord(sql, start);
 		Keyword fromKeyword = findKeyWord(sql, selectKeyword.end());
 		
-		List<Table> tableList = parseTables(sql, fromKeyword.end());
-		Table lastTable = tableList.get(tableList.size() - 1);
+		List<Table<?>> tableList = parseTables(sql, fromKeyword.end());
+		
+		tableList.get(0).headComment(fromKeyword.comment());
+		
+		Table<?> lastTable = tableList.get(tableList.size() - 1);
 		
 		Keyword nextKeyword = findKeyWord(sql, lastTable.end());
 		Keyword whereKeyword = null;
@@ -66,6 +74,7 @@ public class Parser {
 			groupByKeyword = nextKeyword;
 			nextKeyword = findKeyWord(sql, groupByKeyword.end());
 		}
+		
 		if(nextKeyword.is("union all") && nextKeyword.end() < endPos) {
 			endPos = nextKeyword.start() - 1;
 		}
@@ -94,9 +103,9 @@ public class Parser {
 	/**
 	 * 解析由“,”分隔的条件，如select或group by后的约束条件语句
 	 */
-	public static List<String> parseClauseList(String sql, int start, int end) {
+	private static List<String> parseClauseList(String sql, int start, int end) {
 		String substring = sql.substring(start, end);
-		List<String> list = Lists.newArrayList();
+		List<String> list = new ArrayList<String>();
 		int pos = 0;
 		int bracketCnt = 0;
 		boolean quoteFlag = false;
@@ -124,21 +133,21 @@ public class Parser {
 		return list;
 	}
 	
-	public static List<String> splitBy(String str, String regex, int start, int end) {
+	private static List<String> splitBy(String str, String regex, int start, int end) {
 		String substring = str.substring(start, end);
 		String[] arr = substring.split(regex);
-		List<String> list = Lists.newArrayList();
+		List<String> list = new ArrayList<String>();
 		for(String s: arr) {
 			list.add(s.trim());
 		}
 		return list;
 	}
 	
-	public static List<String> splitByAnd(String str, int start, int end) {
+	private static List<String> splitByAnd(String str, int start, int end) {
 		return splitBy(str, "[aA][nN][dD]", start, end);
 	}
 	
-	public static int findEndPos(String sql, int start) {
+	private static int findEndPos(String sql, int start) {
 		int pos = findEndBracket(sql, start);
 		if(pos < 0) {
 			pos = sql.length();
@@ -146,11 +155,11 @@ public class Parser {
 		return pos;
 	}
 	
-	public static int findEndBracket(String sql, int start) {
+	private static int findEndBracket(String sql, int start) {
 		return findEndBracket(sql, start, sql.length());
 	}
 	
-	public static int findEndBracket(String sql, int start, int end) {
+	private static int findEndBracket(String sql, int start, int end) {
 		int cnt = 0;
 		for(int i = start; i < end; i ++) {
 			char c = sql.charAt(i);
@@ -169,9 +178,9 @@ public class Parser {
 	/**
 	 * 解析from后的一个或多个table，包括子查询产生的临时表
 	 */
-	public static List<Table> parseTables(String sql, int start) {
-		List<Table> tables = Lists.newArrayList();
-		Table table = parseTable(sql, start);
+	private static List<Table<?>> parseTables(String sql, int start) {
+		List<Table<?>> tables = new ArrayList<Table<?>>();
+		Table<?> table = parseTable(sql, start);
 		tables.add(table);
 		Keyword nextKeyword = findKeyWord(sql, table.end() + 1);
 		while(nextKeyword.contains("join")) {
@@ -187,14 +196,26 @@ public class Parser {
 		return tables;
 	}
 	
-	private static Table parseTable(String sql, int start) {
+	private static Table<?> parseTable(String sql, int start) {
 		int i = start;
 		char c = sql.charAt(i);
-		while (Character.isWhitespace(c)) {
+		while (Character.isWhitespace(c) || '-' == c) {
 			i++;
 			c = sql.charAt(i);
+			if(c == '-') {	// 处理行末的注释
+				int crlfIdx = findCrlf(sql, i + 1);
+				if(crlfIdx == -1) {
+					break;
+				}
+				i = crlfIdx;
+				c = sql.charAt(i);
+				while(c == '\r' || c == '\n') {
+					i ++;
+					c = sql.charAt(i);
+				}
+			}
 		}
-		Table table = null;
+		Table<?> table = null;
 		if(c == '(') {
 			table = parseQueryTable(sql, i + 1);
 		} else {
@@ -206,20 +227,20 @@ public class Parser {
 	/**
 	 * 解析通过join语句连接的table
 	 */
-	private static Table parseJoinTable(String sql, int start) {
+	private static Table<?> parseJoinTable(String sql, int start) {
 		Keyword nextKeyword = findKeyWord(sql, start);
 		Keyword joinKeyword = null;
 		if(nextKeyword.contains("join")) {
 			joinKeyword = nextKeyword;
 			start = joinKeyword.end();
 		}
-		Table table = parseTable(sql, start);
+		Table<?> table = parseTable(sql, start);
 		int curPos = table.end();
 		
 		// 处理join on的情形
 		if(joinKeyword != null) {
 			JoinTable joinTable = new JoinTable()
-				.baseTable(table)
+				.baseTable(table.headComment(joinKeyword.comment()))
 				.joinType(joinKeyword);	
 			nextKeyword = findKeyWord(sql, curPos);
 			if(nextKeyword.is("on")) {
@@ -240,7 +261,7 @@ public class Parser {
 	/**
 	 * 解析子查询产生的临时表
 	 */
-	public static Table parseQueryTable(String sql, int start) {
+	private static Table<?> parseQueryTable(String sql, int start) {
 		Query query = parseQuery(sql, start);
 		Keyword nextKeyword = findKeyWord(sql, query.end() + 1);
 		if(!nextKeyword.is("union all")) {
@@ -250,8 +271,10 @@ public class Parser {
 				nextEndPos = nextKeyword.start();
 			}
 			String alias = sql.substring(endPos + 1, nextEndPos).trim().split("\\s+")[0];
-			return new QueryTable(query).alias(alias)
+			QueryTable queryTable = new QueryTable(query).alias(alias)
 					.start(start).end(endPos + alias.length());
+			queryTable.tailComment(catchComment(sql, queryTable.end()));
+			return queryTable;
 		}
 		// 处理union all的情形
 		Keyword unionKeyword = nextKeyword;
@@ -263,10 +286,10 @@ public class Parser {
 			unionKeyword = nextKeyword;
 			query = parseQuery(sql, unionKeyword.end() + 1);
 			table = new QueryTable(query).start(unionKeyword.end() + 1).end(query.end());
-			unionTable.addUnionTable(table);
+			unionTable.addUnionKeyword(unionKeyword).addUnionTable(table);
 			nextKeyword = findKeyWord(sql, table.end());
 		}
-		int endPos = findEndBracket(sql, unionTable.lastTable().end() + 1, nextKeyword.start());
+		int endPos = findEndBracket(sql, unionTable.lastTable().end(), nextKeyword.start());
 		String alias = sql.substring(endPos + 1, nextKeyword.start()).trim();
 		return unionTable.alias(alias).start(start).end(nextKeyword.start() - 1);
 	}
@@ -274,12 +297,13 @@ public class Parser {
 	/**
 	 * 解析单张表的表名
 	 */
-	public static SimpleTable parseSimpleTable(String sql, int start) {
+	private static SimpleTable parseSimpleTable(String sql, int start) {
 		Keyword nextKeyword = findKeyWord(sql, start);
-		if(nextKeyword.is("null")) {
-			return null;
+		int end = !nextKeyword.is("null")? nextKeyword.start() - 1: sql.length();
+		int nextEndPos= findEndPos(sql, start);
+		if(nextEndPos < end) {
+			end = nextEndPos;
 		}
-		int end = nextKeyword != null? nextKeyword.start() - 1: sql.length();
 		String str = sql.substring(start, end).trim();
 		String[] arr = str.split("\\s");
 		String tableName = arr[0];
@@ -290,12 +314,72 @@ public class Parser {
 		return new SimpleTable(tableName, alias, start, end);
 	}
 	
-	public static Keyword findKeyWord(String sql, int start) {
+	private static Keyword findKeyWord(String sql, int start) {
+		return findKeyWord(sql, start, false);
+	}
+	
+	private static Keyword findKeyWord(String sql, int start, boolean ignoreComment) {
 		Matcher matcher = KEYWORD_PATTERN.matcher(sql);
 		if(matcher.find(start)) {
-			return new Keyword(matcher.group(1), matcher.start(1), matcher.end(1));
+			Keyword keyword = new Keyword(matcher.group(1), matcher.start(1), matcher.end(1));
+			if(!ignoreComment) {	// 避免捕获comment时，递归的查找后面所有的keyword
+				keyword.comment(catchComment(sql, keyword.end()));
+			}
+			return keyword;
 		}
 		return Keyword.returnNull(sql);
+	}
+	
+	private static Comment catchComment(String sql, int start) {
+		
+		int crlfIdx = findCrlf(sql, start);
+		
+		if(crlfIdx == -1) {
+			return null;
+		}
+		
+		String str = sql.substring(start, crlfIdx);
+		
+		int commentIdx = str.indexOf("--");
+		
+		while(commentIdx != -1 && isAresEscapePattern(str)) {
+			commentIdx = str.indexOf("--", commentIdx + 2);
+		}
+		
+		Keyword nextKeyword = findKeyWord(sql, start, true);
+		if(!nextKeyword.is("null")) {
+			if(commentIdx + start > nextKeyword.start()) {
+				return null;
+			}
+		}
+		
+		if(commentIdx == -1) {
+			return null;
+		}
+		
+		return new Comment()
+			.content(str.substring(commentIdx))
+			.start(start + commentIdx)
+			.end(crlfIdx)
+		;
+		
+	}
+	
+	private static int findCrlf(String sql, int start) {
+		int crIdx = sql.indexOf("\r", start);
+		int lfIdx = sql.indexOf("\n", start);
+		if(crIdx == -1 && lfIdx == -1) {
+			return -1;
+		}
+		int crlfIdx = Math.max(crIdx, lfIdx);
+		if(crlfIdx <= start ) {
+			return -1;
+		}
+		return crlfIdx;
+	}
+	
+	private static boolean isAresEscapePattern(String line) {
+		return ARES_ESCAPE_PATTERN.matcher(line).find();
 	}
 	
 }

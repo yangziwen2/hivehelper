@@ -8,6 +8,6 @@ public class IndexController {
 
 	@RequestMapping({"/", "", "/index.htm"})
 	public String toIndex() {
-		return "index";
+		return "redirect:/index.html";
 	}
 }
